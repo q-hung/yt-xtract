@@ -63,7 +63,10 @@ def extract_video_id(url_or_id: str) -> str:
         match = pattern.search(url_or_id)
         if match:
             return match.group(1)
-    raise ExtractionError(f"Could not extract video ID from: {url_or_id}")
+    raise ExtractionError(
+        f"Could not extract video ID from: {url_or_id!r}. "
+        "Provide an 11-character video ID (e.g. dQw4w9WgXcQ) or a YouTube URL."
+    )
 
 
 def _get_api_key(client: httpx.Client, video_id: str) -> str:

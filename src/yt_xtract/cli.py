@@ -18,13 +18,18 @@ def main() -> None:
 
 
 @main.command()
-@click.argument("video_url")
+@click.argument("video")
 @click.option("-l", "--lang", default="en", show_default=True, help="Language code for the transcript.")
 @click.option("-t", "--timestamps", is_flag=True, help="Include timestamps in the output.")
-def transcript(video_url: str, lang: str, timestamps: bool) -> None:
-    """Fetch and print the transcript for a YouTube video."""
+@click.option("-s", "--save", is_flag=True, help="Save transcript to a text file (<title>_<id>.txt).")
+@click.option("-o", "--output", default=None, help="Output file path (implies --save).")
+def transcript(video: str, lang: str, timestamps: bool, save: bool, output: str | None) -> None:
+    """Fetch and print the transcript for a YouTube video.
+
+    VIDEO is a YouTube video ID (e.g. dQw4w9WgXcQ) or full URL.
+    """
     try:
-        info, segments = fetch_transcript(video_url, lang=lang)
+        info, segments = fetch_transcript(video, lang=lang)
     except ExtractionError as exc:
         click.secho(f"Error: {exc}", fg="red", err=True)
         sys.exit(1)
@@ -33,12 +38,26 @@ def transcript(video_url: str, lang: str, timestamps: bool) -> None:
         click.secho("No transcript segments found.", fg="yellow", err=True)
         sys.exit(1)
 
-    click.echo(f"# {info.title}\n", err=True)
-    click.echo(format_transcript(segments, timestamps=timestamps))
+    text = format_transcript(segments, timestamps=timestamps)
+
+    if output:
+        save = True
+
+    if save:
+        from pathlib import Path
+
+        from yt_xtract.transcript import transcript_filename
+
+        path = Path(output) if output else Path(transcript_filename(info.title, info.video_id))
+        path.write_text(text, encoding="utf-8")
+        click.secho(f"Saved transcript to {path}", fg="green", err=True)
+    else:
+        click.echo(f"# {info.title}\n", err=True)
+        click.echo(text)
 
 
 @main.command()
-@click.argument("video_url")
+@click.argument("video")
 @click.option("-o", "--output", default=None, help="Output file path (default: <video_id>_<quality>.jpg).")
 @click.option(
     "-q",
@@ -47,10 +66,13 @@ def transcript(video_url: str, lang: str, timestamps: bool) -> None:
     type=click.Choice(QUALITY_OPTIONS, case_sensitive=False),
     help="Preferred thumbnail quality.",
 )
-def thumbnail(video_url: str, output: str | None, quality: str | None) -> None:
-    """Download the thumbnail for a YouTube video."""
+def thumbnail(video: str, output: str | None, quality: str | None) -> None:
+    """Download the thumbnail for a YouTube video.
+
+    VIDEO is a YouTube video ID (e.g. dQw4w9WgXcQ) or full URL.
+    """
     try:
-        path = download_thumbnail(video_url, output=output, quality=quality)
+        path = download_thumbnail(video, output=output, quality=quality)
     except ExtractionError as exc:
         click.secho(f"Error: {exc}", fg="red", err=True)
         sys.exit(1)

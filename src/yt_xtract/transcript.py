@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import html
+import re
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass
 
@@ -106,3 +107,17 @@ def format_transcript(
         else:
             lines.append(seg.text)
     return "\n".join(lines)
+
+
+_NON_ALNUM_RE = re.compile(r"[^a-z0-9]+")
+
+
+def slugify_title(title: str) -> str:
+    """Convert a video title to a filesystem-safe snake_case slug."""
+    slug = _NON_ALNUM_RE.sub("_", title.lower()).strip("_")
+    return slug or "video"
+
+
+def transcript_filename(title: str, video_id: str) -> str:
+    """Generate a default transcript filename from title and video ID."""
+    return f"{slugify_title(title)}_{video_id}.txt"
