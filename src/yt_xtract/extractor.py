@@ -26,6 +26,8 @@ _HEADERS = {
     "Accept-Language": "en-US,en;q=0.9",
 }
 
+_TIMEOUT = httpx.Timeout(10.0, connect=5.0)
+
 # Android client context yields caption URLs that actually return content,
 # unlike the WEB client whose timedtext URLs return empty responses.
 _INNERTUBE_CONTEXT = {
@@ -134,7 +136,11 @@ def fetch_video_info(url_or_id: str, *, client: httpx.Client | None = None) -> V
     video_id = extract_video_id(url_or_id)
 
     should_close = client is None
-    client = client or httpx.Client(headers=_HEADERS, follow_redirects=True)
+    client = client or httpx.Client(
+        headers=_HEADERS,
+        follow_redirects=True,
+        timeout=_TIMEOUT,
+    )
     try:
         api_key = _get_api_key(client, video_id)
         player_response = _fetch_player_response(client, video_id, api_key)
