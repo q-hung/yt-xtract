@@ -90,7 +90,10 @@ def fetch_transcript(
             "The video may have restricted captions."
         )
 
-    segments = _parse_caption_xml(resp.text)
+    try:
+        segments = _parse_caption_xml(resp.text)
+    except ET.ParseError as exc:
+        raise ExtractionError(f"Failed to parse caption XML: {exc}") from exc
     return info, segments
 
 

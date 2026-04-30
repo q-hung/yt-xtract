@@ -149,3 +149,35 @@ class TestTranscriptCLISave:
         result = runner.invoke(cli.main, ["transcript", "dQw4w9WgXcQ"])
         assert result.exit_code == 0
         assert "Hello" in result.output
+
+
+class TestTranscriptErrors:
+    def test_xml_parse_error_is_normalized(self, monkeypatch) -> None:
+        from yt_xtract.extractor import CaptionTrack, ExtractionError, VideoInfo
+        from yt_xtract.transcript import fetch_transcript
+
+        class DummyResponse:
+            text = "<broken"
+
+            def raise_for_status(self) -> None:
+                return None
+
+        class DummyClient:
+            def get(self, _url: str) -> DummyResponse:
+                return DummyResponse()
+
+        info = VideoInfo(
+            video_id="dQw4w9WgXcQ",
+            title="Test Video",
+            caption_tracks=[
+                CaptionTrack(
+                    url="https://example.com/captions.xml",
+                    language_code="en",
+                    name="English",
+                )
+            ],
+        )
+        monkeypatch.setattr("yt_xtract.transcript.fetch_video_info", lambda *a, **kw: info)
+
+        with pytest.raises(ExtractionError, match="Failed to parse caption XML"):
+            fetch_transcript("dQw4w9WgXcQ", client=DummyClient())
