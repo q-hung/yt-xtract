@@ -70,4 +70,7 @@ uv run yt-xtract --help
 
 # Or via python -m
 uv run python -m yt_xtract --help
+
+# Run tests
+make test
 ```
