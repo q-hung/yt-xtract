@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from contextlib import nullcontext
 from pathlib import Path
 
 import httpx
@@ -29,6 +28,16 @@ def _try_download(client: httpx.Client, video_id: str, quality: str) -> bytes | 
     return None
 
 
+def _validate_quality(quality: str) -> list[str]:
+    qualities = list(QUALITY_OPTIONS)
+    if quality and quality not in qualities:
+        raise ExtractionError(
+            f"Unknown quality '{quality}'. Options: {', '.join(QUALITY_OPTIONS)}"
+        )
+    idx = qualities.index(quality) if quality else 0
+    return qualities[idx:]
+
+
 def download_thumbnail(
     url_or_id: str,
     *,
@@ -43,20 +52,10 @@ def download_thumbnail(
     """
     video_id = extract_video_id(url_or_id)
 
-    client_context = nullcontext(client) if client is not None else make_client()
-    with client_context as active_client:
-        qualities = list(QUALITY_OPTIONS)
-        if quality:
-            if quality not in qualities:
-                raise ExtractionError(
-                    f"Unknown quality '{quality}'. "
-                    f"Options: {', '.join(QUALITY_OPTIONS)}"
-                )
-            idx = qualities.index(quality)
-            qualities = qualities[idx:]
+    qualities = _validate_quality(quality)
 
+    with make_client(client=client) as active_client:
         data: bytes | None = None
-        used_quality = qualities[0]
         for q in qualities:
             data = _try_download(active_client, video_id, q)
             if data is not None:

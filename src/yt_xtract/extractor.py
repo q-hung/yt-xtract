@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from contextlib import AbstractContextManager, contextmanager
 import json
 import re
 from dataclasses import dataclass, field
@@ -58,13 +59,21 @@ class VideoInfo:
     thumbnail_url: str | None = None
 
 
-def make_client(*, timeout: httpx.Timeout | None = _TIMEOUT) -> httpx.Client:
-    """Create a pre-configured HTTP client used across the project."""
-    return httpx.Client(
-        headers=_HEADERS,
-        follow_redirects=True,
-        timeout=timeout,
-    )
+@contextmanager
+def make_client(
+    *,
+    client: httpx.Client | None = None,
+    timeout: httpx.Timeout | None = _TIMEOUT,
+) -> AbstractContextManager[httpx.Client]:
+    """Return a managed HTTP client context used across the project."""
+    if client is not None:
+        yield client
+    else:
+        # Use with here to ensure the client is closed if there is an error
+        with httpx.Client(
+            headers=_HEADERS, follow_redirects=True, timeout=timeout
+        ) as new_client:
+            yield new_client
 
 
 def extract_video_id(url_or_id: str) -> str:
@@ -142,14 +151,9 @@ def fetch_video_info(
 ) -> VideoInfo:
     """Fetch and parse video info from YouTube for a given URL or video ID."""
     video_id = extract_video_id(url_or_id)
-
-    if client is None:
-        with make_client() as managed_client:
-            api_key = _get_api_key(managed_client, video_id)
-            player_response = _fetch_player_response(managed_client, video_id, api_key)
-    else:
-        api_key = _get_api_key(client, video_id)
-        player_response = _fetch_player_response(client, video_id, api_key)
+    with make_client(client=client) as active_client:
+        api_key = _get_api_key(active_client, video_id)
+        player_response = _fetch_player_response(active_client, video_id, api_key)
 
     video_details = player_response.get("videoDetails", {})
     title = video_details.get("title", "")

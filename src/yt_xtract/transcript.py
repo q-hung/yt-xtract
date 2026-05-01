@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from contextlib import nullcontext
 import html
 import re
 import xml.etree.ElementTree as ET
@@ -71,9 +70,8 @@ def fetch_transcript(
 
     Returns the VideoInfo and a list of TranscriptSegments.
     """
-    client_context = nullcontext(client) if client is not None else make_client()
     try:
-        with client_context as active_client:
+        with make_client(client=client) as active_client:
             info = fetch_video_info(url_or_id, client=active_client)
             track = _select_track(info.caption_tracks, lang)
 
