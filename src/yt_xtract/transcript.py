@@ -70,15 +70,12 @@ def fetch_transcript(
 
     Returns the VideoInfo and a list of TranscriptSegments.
     """
-    try:
-        with make_client(client=client) as active_client:
-            info = fetch_video_info(url_or_id, client=active_client)
-            track = _select_track(info.caption_tracks, lang)
+    with make_client(client=client) as active_client:
+        info = fetch_video_info(url_or_id, client=active_client)
+        track = _select_track(info.caption_tracks, lang)
 
-            resp = active_client.get(track.url)
-            resp.raise_for_status()
-    except httpx.HTTPError as exc:
-        raise ExtractionError(f"Failed to fetch caption track: {exc}") from exc
+        resp = active_client.get(track.url)
+        resp.raise_for_status()
 
     if not resp.text.strip():
         raise ExtractionError(
