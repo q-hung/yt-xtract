@@ -58,6 +58,15 @@ class VideoInfo:
     thumbnail_url: str | None = None
 
 
+def make_client(*, timeout: httpx.Timeout | None = _TIMEOUT) -> httpx.Client:
+    """Create a pre-configured HTTP client used across the project."""
+    return httpx.Client(
+        headers=_HEADERS,
+        follow_redirects=True,
+        timeout=timeout,
+    )
+
+
 def extract_video_id(url_or_id: str) -> str:
     """Parse a YouTube URL or bare video ID and return the 11-char video ID."""
     url_or_id = url_or_id.strip()
@@ -85,9 +94,7 @@ def _get_api_key(client: httpx.Client, video_id: str) -> str:
     return match.group(1)
 
 
-def _fetch_player_response(
-    client: httpx.Client, video_id: str, api_key: str
-) -> dict:
+def _fetch_player_response(client: httpx.Client, video_id: str, api_key: str) -> dict:
     """Call the InnerTube /player endpoint with Android client context."""
     body = {
         "context": _INNERTUBE_CONTEXT,
@@ -112,8 +119,7 @@ def _fetch_player_response(
 def _parse_caption_tracks(player_response: dict) -> list[CaptionTrack]:
     """Extract caption track metadata from the player response."""
     captions = (
-        player_response
-        .get("captions", {})
+        player_response.get("captions", {})
         .get("playerCaptionsTracklistRenderer", {})
         .get("captionTracks", [])
     )
@@ -131,22 +137,19 @@ def _parse_caption_tracks(player_response: dict) -> list[CaptionTrack]:
     return tracks
 
 
-def fetch_video_info(url_or_id: str, *, client: httpx.Client | None = None) -> VideoInfo:
+def fetch_video_info(
+    url_or_id: str, *, client: httpx.Client | None = None
+) -> VideoInfo:
     """Fetch and parse video info from YouTube for a given URL or video ID."""
     video_id = extract_video_id(url_or_id)
 
-    should_close = client is None
-    client = client or httpx.Client(
-        headers=_HEADERS,
-        follow_redirects=True,
-        timeout=_TIMEOUT,
-    )
-    try:
+    if client is None:
+        with make_client() as managed_client:
+            api_key = _get_api_key(managed_client, video_id)
+            player_response = _fetch_player_response(managed_client, video_id, api_key)
+    else:
         api_key = _get_api_key(client, video_id)
         player_response = _fetch_player_response(client, video_id, api_key)
-    finally:
-        if should_close:
-            client.close()
 
     video_details = player_response.get("videoDetails", {})
     title = video_details.get("title", "")

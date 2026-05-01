@@ -19,11 +19,26 @@ def main() -> None:
 
 @main.command()
 @click.argument("video")
-@click.option("-l", "--lang", default="en", show_default=True, help="Language code for the transcript.")
-@click.option("-t", "--timestamps", is_flag=True, help="Include timestamps in the output.")
-@click.option("-s", "--save", is_flag=True, help="Save transcript to a text file (<title>_<id>.txt).")
+@click.option(
+    "-l",
+    "--lang",
+    default="en",
+    show_default=True,
+    help="Language code for the transcript.",
+)
+@click.option(
+    "-t", "--timestamps", is_flag=True, help="Include timestamps in the output."
+)
+@click.option(
+    "-s",
+    "--save",
+    is_flag=True,
+    help="Save transcript to a text file (<title>_<id>.txt).",
+)
 @click.option("-o", "--output", default=None, help="Output file path (implies --save).")
-def transcript(video: str, lang: str, timestamps: bool, save: bool, output: str | None) -> None:
+def transcript(
+    video: str, lang: str, timestamps: bool, save: bool, output: str | None
+) -> None:
     """Fetch and print the transcript for a YouTube video.
 
     VIDEO is a YouTube video ID (e.g. dQw4w9WgXcQ) or full URL.
@@ -48,7 +63,11 @@ def transcript(video: str, lang: str, timestamps: bool, save: bool, output: str 
 
         from yt_xtract.transcript import transcript_filename
 
-        path = Path(output) if output else Path(transcript_filename(info.title, info.video_id))
+        path = (
+            Path(output)
+            if output
+            else Path(transcript_filename(info.title, info.video_id))
+        )
         path.write_text(text, encoding="utf-8")
         click.secho(f"Saved transcript to {path}", fg="green", err=True)
     else:
@@ -58,7 +77,12 @@ def transcript(video: str, lang: str, timestamps: bool, save: bool, output: str 
 
 @main.command()
 @click.argument("video")
-@click.option("-o", "--output", default=None, help="Output file path (default: <video_id>_<quality>.jpg).")
+@click.option(
+    "-o",
+    "--output",
+    default=None,
+    help="Output file path (default: <video_id>_<quality>.jpg).",
+)
 @click.option(
     "-q",
     "--quality",

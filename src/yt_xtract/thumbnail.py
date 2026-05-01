@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
+from contextlib import nullcontext
 from pathlib import Path
 
 import httpx
 
-from yt_xtract.extractor import ExtractionError, _HEADERS, extract_video_id
+from yt_xtract.extractor import ExtractionError, extract_video_id, make_client
 
 QUALITY_OPTIONS = ("maxresdefault", "sddefault", "hqdefault", "mqdefault", "default")
 
@@ -42,10 +43,8 @@ def download_thumbnail(
     """
     video_id = extract_video_id(url_or_id)
 
-    should_close = client is None
-    client = client or httpx.Client(headers=_HEADERS, follow_redirects=True)
-
-    try:
+    client_context = nullcontext(client) if client is not None else make_client()
+    with client_context as active_client:
         qualities = list(QUALITY_OPTIONS)
         if quality:
             if quality not in qualities:
@@ -59,7 +58,7 @@ def download_thumbnail(
         data: bytes | None = None
         used_quality = qualities[0]
         for q in qualities:
-            data = _try_download(client, video_id, q)
+            data = _try_download(active_client, video_id, q)
             if data is not None:
                 used_quality = q
                 break
@@ -68,9 +67,6 @@ def download_thumbnail(
             raise ExtractionError(
                 f"No thumbnail found for video {video_id} at any quality."
             )
-    finally:
-        if should_close:
-            client.close()
 
     out_path = Path(output) if output else Path(f"{video_id}_{used_quality}.jpg")
     out_path.write_bytes(data)

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from contextlib import nullcontext
 import html
 import re
 import xml.etree.ElementTree as ET
@@ -13,8 +14,8 @@ from yt_xtract.extractor import (
     CaptionTrack,
     ExtractionError,
     VideoInfo,
-    _HEADERS,
     fetch_video_info,
+    make_client,
 )
 
 
@@ -70,19 +71,16 @@ def fetch_transcript(
 
     Returns the VideoInfo and a list of TranscriptSegments.
     """
-    should_close = client is None
-    client = client or httpx.Client(headers=_HEADERS, follow_redirects=True)
+    client_context = nullcontext(client) if client is not None else make_client()
     try:
-        info = fetch_video_info(url_or_id, client=client)
-        track = _select_track(info.caption_tracks, lang)
+        with client_context as active_client:
+            info = fetch_video_info(url_or_id, client=active_client)
+            track = _select_track(info.caption_tracks, lang)
 
-        resp = client.get(track.url)
-        resp.raise_for_status()
+            resp = active_client.get(track.url)
+            resp.raise_for_status()
     except httpx.HTTPError as exc:
         raise ExtractionError(f"Failed to fetch caption track: {exc}") from exc
-    finally:
-        if should_close:
-            client.close()
 
     if not resp.text.strip():
         raise ExtractionError(
